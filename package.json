@@ -1,0 +1,11 @@
+{
+  "name": "jpa-bar-stock",
+  "version": "3.0.0",
+  "description": "JPA Bar - Gestion des boissons, ventes et serveuses",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "dependencies": {
+    "express": "^4.19.2",
+    "pg": "^8.12.0"
+  }
+}
