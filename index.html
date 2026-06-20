@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JPA Bar — Gestion de stock</title>
+<style>
+  :root{
+    --noir: #14110f;
+    --noir-2: #1c1815;
+    --carte: #211c18;
+    --laiton: #c89b4a;
+    --laiton-clair: #e3c581;
+    --creme: #ece4d6;
+    --gris: #8a8178;
+    --rouge: #b5503f;
+    --vert: #6f8f5a;
+    --ligne: #34302a;
+    --radius: 3px;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background: var(--noir);
+    color: var(--creme);
+    font-family: 'Courier New', Courier, monospace;
+    min-height:100vh;
+    padding: 28px 16px 60px;
+  }
+
+  .wrap{max-width: 980px; margin: 0 auto;}
+
+  header.fronton{
+    border: 1px solid var(--ligne);
+    border-radius: var(--radius);
+    padding: 22px 24px;
+    margin-bottom: 26px;
+    position: relative;
+    background: linear-gradient(180deg, var(--noir-2), var(--noir));
+    overflow:hidden;
+  }
+  header.fronton::before{
+    content:"";
+    position:absolute; inset:0;
+    background: repeating-linear-gradient(135deg, rgba(200,155,74,0.035) 0 2px, transparent 2px 14px);
+    pointer-events:none;
+  }
+  .fronton-top{
+    display:flex; justify-content:space-between; align-items:baseline; gap:16px; flex-wrap:wrap;
+  }
+  h1{
+    font-family: Georgia, 'Times New Roman', serif;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    font-size: clamp(1.6rem, 4vw, 2.4rem);
+    color: var(--laiton-clair);
+    margin: 0;
+  }
+  h1 span{color: var(--creme); font-weight:400; font-style:italic; font-size:0.55em; display:block; letter-spacing:0.2em; margin-top:4px;}
+
+  .qui-suis-je{
+    font-size: 0.75rem; color: var(--gris); text-align:right; line-height:1.6;
+  }
+  .qui-suis-je input{
+    background: var(--noir); border:1px solid var(--ligne); color:var(--laiton-clair);
+    padding: 5px 8px; border-radius: var(--radius); font-family:inherit; font-size:0.78rem; width:150px;
+  }
+  .qui-suis-je label{display:block; margin-bottom:3px; text-transform:uppercase; letter-spacing:0.05em;}
+
+  .barre-dorée{height:1px; background: linear-gradient(90deg, transparent, var(--laiton), transparent); margin: 18px 0 14px;}
+
+  .stat-line{display:flex; gap: 28px; flex-wrap:wrap; font-size:0.8rem; color:var(--gris);}
+  .stat-line .val{color:var(--laiton-clair); font-weight:bold; font-size:1.05rem; margin-right:6px;}
+
+  .statut-connexion{
+    font-size: 0.7rem; margin-top:10px; display:flex; align-items:center; gap:6px;
+  }
+  .point{width:7px; height:7px; border-radius:50%; background:var(--vert); display:inline-block;}
+  .point.hors{background:var(--rouge);}
+
+  .section{
+    border: 1px solid var(--ligne);
+    border-radius: var(--radius);
+    background: var(--carte);
+    margin-bottom: 22px;
+  }
+  .section-titre{
+    display:flex; align-items:center; gap:10px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--ligne);
+  }
+  .section-titre .num{
+    font-family: Georgia, serif; font-style:italic; color: var(--laiton);
+    font-size: 1.1rem; border: 1px solid var(--laiton); width:26px; height:26px;
+    border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .section-titre h2{
+    margin:0; font-size: 1rem; letter-spacing:0.08em; text-transform:uppercase; color: var(--creme); font-family: Georgia, serif; font-weight:600;
+  }
+  .section-corps{padding: 18px;}
+
+  form.ajout{
+    display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end;
+  }
+  .champ{display:flex; flex-direction:column; gap:5px; flex:1 1 140px;}
+  .champ.petit{flex: 0 1 110px;}
+  label{
+    font-size: 0.68rem; text-transform:uppercase; letter-spacing:0.08em; color: var(--gris);
+  }
+  input, select{
+    background: var(--noir);
+    border: 1px solid var(--ligne);
+    color: var(--creme);
+    padding: 9px 10px;
+    border-radius: var(--radius);
+    font-family: inherit;
+    font-size: 0.9rem;
+    outline: none;
+  }
+  input:focus, select:focus{border-color: var(--laiton);}
+  input::placeholder{color:#5d564c;}
+
+  button{
+    font-family: inherit; cursor:pointer; border-radius: var(--radius);
+    border: 1px solid var(--laiton);
+    background: var(--laiton);
+    color: var(--noir);
+    font-weight:bold;
+    letter-spacing:0.04em;
+    padding: 9px 18px;
+    font-size: 0.85rem;
+    text-transform:uppercase;
+    transition: background 0.15s, color 0.15s;
+  }
+  button:hover{background: var(--laiton-clair);}
+  button:disabled{opacity:0.5; cursor:not-allowed;}
+  button.danger{color:var(--rouge); border-color:var(--rouge); background:transparent; font-weight:normal; text-transform:none; padding:6px 10px; font-size:0.75rem;}
+  button.danger:hover{background:var(--rouge); color:var(--noir);}
+
+  table{width:100%; border-collapse:collapse; margin-top:4px;}
+  thead th{
+    text-align:left; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em;
+    color: var(--gris); padding: 8px 10px; border-bottom: 1px solid var(--ligne);
+  }
+  tbody td{
+    padding: 10px 10px; border-bottom: 1px solid var(--ligne); font-size:0.9rem; vertical-align:middle;
+  }
+  tbody tr:hover{background: rgba(200,155,74,0.05);}
+  tbody tr:last-child td{border-bottom:none;}
+  td.nom{color:var(--laiton-clair); font-weight:bold;}
+  td.qte{font-family: 'Courier New', monospace; font-size:1rem;}
+  td.actions{text-align:right; white-space:nowrap;}
+  td.maj{color:var(--gris); font-size:0.72rem;}
+
+  .badge{
+    display:inline-block; padding:2px 8px; border-radius:10px; font-size:0.68rem;
+    text-transform:uppercase; letter-spacing:0.05em; border:1px solid;
+  }
+  .badge.ok{color:var(--vert); border-color:var(--vert);}
+  .badge.bas{color:var(--rouge); border-color:var(--rouge);}
+
+  .vide{
+    text-align:center; padding: 30px 10px; color: var(--gris); font-style:italic; font-size:0.85rem;
+  }
+
+  .stepper{display:inline-flex; align-items:center; gap:6px;}
+  .stepper button{
+    width:26px; height:26px; padding:0; display:flex; align-items:center; justify-content:center;
+    background:transparent; border:1px solid var(--ligne); color:var(--laiton); font-size:1rem; font-weight:bold;
+  }
+  .stepper button:hover{border-color:var(--laiton); background:rgba(200,155,74,0.1); color:var(--laiton-clair);}
+  .stepper span{min-width:34px; text-align:center; font-weight:bold;}
+
+  footer{text-align:center; color:var(--gris); font-size:0.7rem; margin-top:30px; letter-spacing:0.05em;}
+
+  @media (max-width:560px){
+    .fronton-top{flex-direction:column;}
+    .qui-suis-je{text-align:left;}
+    td.actions{white-space:normal;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="fronton">
+    <div class="fronton-top">
+      <h1>JPA BAR<span>Registre de cave &amp; de réserve</span></h1>
+      <div class="qui-suis-je">
+        <label for="mon-nom">Connecté en tant que</label>
+        <input id="mon-nom" type="text" placeholder="ton prénom">
+      </div>
+    </div>
+    <div class="barre-dorée"></div>
+    <div class="stat-line">
+      <div><span class="val" id="total-boissons">0</span>boissons référencées</div>
+      <div><span class="val" id="total-bouteilles">0</span>bouteilles en cave</div>
+      <div><span class="val" id="total-ingredients">0</span>ingrédients référencés</div>
+      <div><span class="val" id="total-alertes">0</span>en alerte stock bas</div>
+    </div>
+    <div class="statut-connexion"><span class="point" id="point-statut"></span><span id="texte-statut">Connexion au serveur...</span></div>
+  </header>
+
+  <section class="section">
+    <div class="section-titre"><span class="num">1</span><h2>Boissons</h2></div>
+    <div class="section-corps">
+      <form class="ajout" id="form-boisson">
+        <div class="champ">
+          <label for="b-nom">Nom de la boisson</label>
+          <input id="b-nom" type="text" placeholder="ex. Heineken 33cl" required>
+        </div>
+        <div class="champ petit">
+          <label for="b-bouteilles">Bouteilles</label>
+          <input id="b-bouteilles" type="number" min="0" placeholder="0" required>
+        </div>
+        <div class="champ petit">
+          <label for="b-seuil">Seuil alerte</label>
+          <input id="b-seuil" type="number" min="0" placeholder="6">
+        </div>
+        <button type="submit">Ajouter</button>
+      </form>
+
+      <table>
+        <thead><tr><th>Boisson</th><th>Bouteilles</th><th>Statut</th><th>Dernière modif.</th><th></th></tr></thead>
+        <tbody id="liste-boissons"></tbody>
+      </table>
+      <div class="vide" id="vide-boissons" style="display:none;">Aucune boisson enregistrée pour le moment.</div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-titre"><span class="num">2</span><h2>Ingrédients</h2></div>
+    <div class="section-corps">
+      <form class="ajout" id="form-ingredient">
+        <div class="champ">
+          <label for="i-nom">Nom de l'ingrédient</label>
+          <input id="i-nom" type="text" placeholder="ex. Citron" required>
+        </div>
+        <div class="champ petit">
+          <label for="i-quantite">Quantité</label>
+          <input id="i-quantite" type="number" min="0" step="0.1" placeholder="0" required>
+        </div>
+        <div class="champ petit">
+          <label for="i-unite">Unité</label>
+          <select id="i-unite">
+            <option value="">—</option>
+            <option>kg</option><option>g</option><option>L</option><option>cl</option><option>ml</option>
+            <option>pièce(s)</option><option>sachet(s)</option><option>carton(s)</option>
+          </select>
+        </div>
+        <div class="champ petit">
+          <label for="i-seuil">Seuil alerte</label>
+          <input id="i-seuil" type="number" min="0" step="0.1" placeholder="2">
+        </div>
+        <button type="submit">Ajouter</button>
+      </form>
+
+      <table>
+        <thead><tr><th>Ingrédient</th><th>Quantité</th><th>Statut</th><th>Dernière modif.</th><th></th></tr></thead>
+        <tbody id="liste-ingredients"></tbody>
+      </table>
+      <div class="vide" id="vide-ingredients" style="display:none;">Aucun ingrédient enregistré pour le moment.</div>
+    </div>
+  </section>
+
+  <footer>JPA BAR — registre de stock partagé · les modifications sont visibles par tous les employés après rechargement</footer>
+</div>
+
+<script>
+  let boissons = [];
+  let ingredients = [];
+
+  function monNom(){
+    return document.getElementById('mon-nom').value.trim() || 'Inconnu';
+  }
+  document.getElementById('mon-nom').addEventListener('change', () => {
+    localStorage.setItem('jpa-bar-mon-nom', document.getElementById('mon-nom').value);
+  });
+  const nomSauve = localStorage.getItem('jpa-bar-mon-nom');
+  if(nomSauve) document.getElementById('mon-nom').value = nomSauve;
+
+  function formaterDate(iso){
+    if(!iso) return '—';
+    const d = new Date(iso + (iso.endsWith('Z') ? '' : 'Z'));
+    return d.toLocaleDateString('fr-FR', {day:'2-digit', month:'2-digit'}) + ' ' +
+           d.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+  }
+
+  function statutBadge(quantite, seuil){
+    const s = (seuil === null || seuil === undefined || isNaN(seuil)) ? 0 : seuil;
+    return quantite <= s
+      ? '<span class="badge bas">Stock bas</span>'
+      : '<span class="badge ok">OK</span>';
+  }
+
+  function escapeHtml(str){
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  async function appel(url, options){
+    const res = await fetch(url, options);
+    if(!res.ok){
+      const data = await res.json().catch(()=>({erreur:'Erreur serveur'}));
+      throw new Error(data.erreur || 'Erreur serveur');
+    }
+    return res.json();
+  }
+
+  async function chargerTout(){
+    try{
+      [boissons, ingredients] = await Promise.all([
+        appel('/api/boissons'),
+        appel('/api/ingredients')
+      ]);
+      document.getElementById('point-statut').classList.remove('hors');
+      document.getElementById('texte-statut').textContent = 'Connecté au registre partagé';
+      rendreBoissons();
+      rendreIngredients();
+    }catch(e){
+      document.getElementById('point-statut').classList.add('hors');
+      document.getElementById('texte-statut').textContent = 'Hors connexion — impossible de joindre le serveur';
+    }
+  }
+
+  function rendreBoissons(){
+    const corps = document.getElementById('liste-boissons');
+    const vide = document.getElementById('vide-boissons');
+    corps.innerHTML = '';
+    vide.style.display = boissons.length === 0 ? 'block' : 'none';
+
+    boissons.forEach(b => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="nom">${escapeHtml(b.nom)}</td>
+        <td class="qte">
+          <div class="stepper">
+            <button type="button" onclick="changerBouteilles(${b.id}, ${b.bouteilles}, -1)">−</button>
+            <span>${b.bouteilles}</span>
+            <button type="button" onclick="changerBouteilles(${b.id}, ${b.bouteilles}, 1)">+</button>
+          </div>
+        </td>
+        <td>${statutBadge(b.bouteilles, b.seuil)}</td>
+        <td class="maj">${b.modifie_par ? escapeHtml(b.modifie_par)+' · ' : ''}${formaterDate(b.modifie_le)}</td>
+        <td class="actions"><button type="button" class="danger" onclick="supprimerBoisson(${b.id})">Retirer</button></td>
+      `;
+      corps.appendChild(tr);
+    });
+    majStats();
+  }
+
+  function rendreIngredients(){
+    const corps = document.getElementById('liste-ingredients');
+    const vide = document.getElementById('vide-ingredients');
+    corps.innerHTML = '';
+    vide.style.display = ingredients.length === 0 ? 'block' : 'none';
+
+    ingredients.forEach(i => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="nom">${escapeHtml(i.nom)}</td>
+        <td class="qte">${i.quantite}${i.unite ? ' '+escapeHtml(i.unite) : ''}</td>
+        <td>${statutBadge(i.quantite, i.seuil)}</td>
+        <td class="maj">${i.modifie_par ? escapeHtml(i.modifie_par)+' · ' : ''}${formaterDate(i.modifie_le)}</td>
+        <td class="actions"><button type="button" class="danger" onclick="supprimerIngredient(${i.id})">Retirer</button></td>
+      `;
+      corps.appendChild(tr);
+    });
+    majStats();
+  }
+
+  function majStats(){
+    document.getElementById('total-boissons').textContent = boissons.length;
+    document.getElementById('total-bouteilles').textContent = boissons.reduce((s,b)=>s+Number(b.bouteilles),0);
+    document.getElementById('total-ingredients').textContent = ingredients.length;
+    const alertes = boissons.filter(b => b.bouteilles <= (b.seuil||0)).length
+                  + ingredients.filter(i => i.quantite <= (i.seuil||0)).length;
+    document.getElementById('total-alertes').textContent = alertes;
+  }
+
+  async function changerBouteilles(id, actuel, delta){
+    const nouveau = Math.max(0, actuel + delta);
+    try{
+      await appel('/api/boissons/' + id, {
+        method: 'PATCH',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ bouteilles: nouveau, employe: monNom() })
+      });
+      await chargerTout();
+    }catch(e){ alert(e.message); }
+  }
+
+  async function supprimerBoisson(id){
+    if(!confirm('Retirer cette boisson du registre ?')) return;
+    try{
+      await appel('/api/boissons/' + id, { method: 'DELETE' });
+      await chargerTout();
+    }catch(e){ alert(e.message); }
+  }
+
+  async function supprimerIngredient(id){
+    if(!confirm('Retirer cet ingrédient du registre ?')) return;
+    try{
+      await appel('/api/ingredients/' + id, { method: 'DELETE' });
+      await chargerTout();
+    }catch(e){ alert(e.message); }
+  }
+
+  document.getElementById('form-boisson').addEventListener('submit', async e => {
+    e.preventDefault();
+    const nom = document.getElementById('b-nom').value.trim();
+    const bouteilles = parseInt(document.getElementById('b-bouteilles').value, 10);
+    const seuilRaw = document.getElementById('b-seuil').value;
+    const seuil = seuilRaw === '' ? 6 : parseInt(seuilRaw, 10);
+    if(!nom || isNaN(bouteilles)) return;
+    try{
+      await appel('/api/boissons', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ nom, bouteilles, seuil, employe: monNom() })
+      });
+      e.target.reset();
+      document.getElementById('b-nom').focus();
+      await chargerTout();
+    }catch(e){ alert(e.message); }
+  });
+
+  document.getElementById('form-ingredient').addEventListener('submit', async e => {
+    e.preventDefault();
+    const nom = document.getElementById('i-nom').value.trim();
+    const quantite = parseFloat(document.getElementById('i-quantite').value);
+    const unite = document.getElementById('i-unite').value;
+    const seuilRaw = document.getElementById('i-seuil').value;
+    const seuil = seuilRaw === '' ? 2 : parseFloat(seuilRaw);
+    if(!nom || isNaN(quantite)) return;
+    try{
+      await appel('/api/ingredients', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ nom, quantite, unite, seuil, employe: monNom() })
+      });
+      e.target.reset();
+      document.getElementById('i-nom').focus();
+      await chargerTout();
+    }catch(e){ alert(e.message); }
+  });
+
+  chargerTout();
+  setInterval(chargerTout, 15000); // rafraîchit toutes les 15s pour voir les modifs des autres
+</script>
+</body>
+</html>
