@@ -115,11 +115,45 @@
   }
   #zone-impression{display:none;}
 
-  @media (max-width:560px){
-    .fronton-top{flex-direction:column;}
-    .qui-suis-je{text-align:left;}
+  .tableau-scroll{width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch;}
+
+@media (max-width:560px){
+    body{padding:14px 8px 40px;}
+    header.fronton{padding:16px 14px;}
+    .fronton-top{flex-direction:column; align-items:flex-start;}
+    .qui-suis-je{text-align:left; width:100%;}
+    .qui-suis-je input{width:100%;}
+    .stat-line{gap:14px; font-size:0.72rem;}
+    .stat-line .val{font-size:0.95rem;}
+
+    nav.onglets{flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:4px; margin-bottom:14px;}
+    nav.onglets button{flex:0 0 auto; padding:9px 12px; font-size:0.72rem;}
+
+    .section-corps{padding:12px;}
+    form.ajout{flex-direction:column; align-items:stretch;}
+    .champ, .champ.petit{flex:1 1 auto; width:100%;}
+    form.ajout button{width:100%;}
+
+    .barre-recherche-date{flex-direction:column; align-items:stretch;}
+    .barre-recherche-date .champ{flex:1 1 auto; width:100%;}
+    .barre-recherche-date button{width:100%;}
+
+    .cartes-totaux{flex-direction:column;}
+    .carte-total{flex:1 1 auto;}
+
+    .filtre-categories{overflow-x:auto; -webkit-overflow-scrolling:touch; flex-wrap:nowrap; padding-bottom:4px;}
+    .filtre-categories button{flex:0 0 auto;}
+
+    table{min-width:640px;}
+
     td.actions{white-space:normal;}
-  }
+    .bilan-ligne-serveuse{flex-direction:column; align-items:flex-start; gap:4px;}
+}
+
+@media (max-width:380px){
+    h1{font-size:1.4rem;}
+    .stat-line{font-size:0.66rem; gap:10px;}
+}
 </style>
 </head>
 <body>
