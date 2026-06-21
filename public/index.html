@@ -115,8 +115,7 @@
   }
   #zone-impression{display:none;}
 
-  .tableau-scroll{width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch;}
-
+.tableau-scroll{width:100%; max-width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; display:block;}
 @media (max-width:560px){
     body{padding:14px 8px 40px;}
     header.fronton{padding:16px 14px;}
@@ -144,8 +143,9 @@
     .filtre-categories{overflow-x:auto; -webkit-overflow-scrolling:touch; flex-wrap:nowrap; padding-bottom:4px;}
     .filtre-categories button{flex:0 0 auto;}
 
-    table{min-width:640px;}
-
+  table{min-width:640px;}
+  thead th{font-size:0.6rem; padding:6px 5px; white-space:nowrap;}
+  tbody td{font-size:0.75rem; padding:7px 5px;}
     td.actions{white-space:normal;}
     .bilan-ligne-serveuse{flex-direction:column; align-items:flex-start; gap:4px;}
 }
