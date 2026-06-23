@@ -1,0 +1,1417 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JPA Bar — Gestion de stock</title>
+<style>
+  :root{
+    --noir: #14110f; --noir-2: #1c1815; --carte: #211c18;
+    --laiton: #c89b4a; --laiton-clair: #e3c581; --creme: #ece4d6;
+    --gris: #8a8178; --rouge: #b5503f; --vert: #6f8f5a; --ligne: #34302a;
+    --radius: 3px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--noir); color:var(--creme); font-family:'Courier New',monospace; min-height:100vh; padding:28px 16px 60px;}
+  .wrap{max-width:1080px; margin:0 auto;}
+
+  header.fronton{border:1px solid var(--ligne); border-radius:var(--radius); padding:22px 24px; margin-bottom:26px; position:relative; background:linear-gradient(180deg,var(--noir-2),var(--noir)); overflow:hidden;}
+  header.fronton::before{content:""; position:absolute; inset:0; background:repeating-linear-gradient(135deg, rgba(200,155,74,0.035) 0 2px, transparent 2px 14px); pointer-events:none;}
+  .fronton-top{display:flex; justify-content:space-between; align-items:baseline; gap:16px; flex-wrap:wrap;}
+  h1{font-family:Georgia,serif; font-weight:700; letter-spacing:0.04em; font-size:clamp(1.6rem,4vw,2.4rem); color:var(--laiton-clair); margin:0;}
+  h1 span{color:var(--creme); font-weight:400; font-style:italic; font-size:0.55em; display:block; letter-spacing:0.2em; margin-top:4px;}
+  .qui-suis-je{font-size:0.75rem; color:var(--gris); text-align:right; line-height:1.6;}
+  .qui-suis-je input{background:var(--noir); border:1px solid var(--ligne); color:var(--laiton-clair); padding:5px 8px; border-radius:var(--radius); font-family:inherit; font-size:0.78rem; width:150px;}
+  .qui-suis-je label{display:block; margin-bottom:3px; text-transform:uppercase; letter-spacing:0.05em;}
+  .barre-dorée{height:1px; background:linear-gradient(90deg,transparent,var(--laiton),transparent); margin:18px 0 14px;}
+  .stat-line{display:flex; gap:28px; flex-wrap:wrap; font-size:0.8rem; color:var(--gris);}
+  .stat-line .val{color:var(--laiton-clair); font-weight:bold; font-size:1.05rem; margin-right:6px;}
+  .statut-connexion{font-size:0.7rem; margin-top:10px; display:flex; align-items:center; gap:6px;}
+  .point{width:7px; height:7px; border-radius:50%; background:var(--vert); display:inline-block;}
+  .point.hors{background:var(--rouge);}
+
+  nav.onglets{display:flex; gap:6px; margin-bottom:18px; flex-wrap:wrap;}
+  nav.onglets button{background:transparent; border:1px solid var(--ligne); color:var(--gris); padding:9px 16px; border-radius:var(--radius); font-family:inherit; font-size:0.8rem; text-transform:uppercase; letter-spacing:0.05em; cursor:pointer;}
+  nav.onglets button.actif{background:var(--laiton); color:var(--noir); border-color:var(--laiton); font-weight:bold;}
+  .page{display:none;}
+  .page.actif{display:block;}
+
+  .section{border:1px solid var(--ligne); border-radius:var(--radius); background:var(--carte); margin-bottom:22px;}
+  .section-titre{display:flex; align-items:center; gap:10px; padding:14px 18px; border-bottom:1px solid var(--ligne);}
+  .section-titre h2{margin:0; font-size:1rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--creme); font-family:Georgia,serif; font-weight:600;}
+  .section-corps{padding:18px;}
+
+  .filtre-categories{display:flex; gap:6px; margin-bottom:16px; flex-wrap:wrap;}
+  .filtre-categories button{background:transparent; border:1px solid var(--ligne); color:var(--gris); padding:6px 14px; border-radius:14px; font-family:inherit; font-size:0.75rem; cursor:pointer;}
+  .filtre-categories button.actif{border-color:var(--laiton); color:var(--laiton-clair);}
+
+  form.ajout{display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end;}
+  .champ{display:flex; flex-direction:column; gap:5px; flex:1 1 140px;}
+  .champ.petit{flex:0 1 110px;}
+  label{font-size:0.68rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--gris);}
+  input, select{background:var(--noir); border:1px solid var(--ligne); color:var(--creme); padding:9px 10px; border-radius:var(--radius); font-family:inherit; font-size:0.9rem; outline:none;}
+  input:focus, select:focus{border-color:var(--laiton);}
+  input::placeholder{color:#5d564c;}
+
+  button{font-family:inherit; cursor:pointer; border-radius:var(--radius); border:1px solid var(--laiton); background:var(--laiton); color:var(--noir); font-weight:bold; letter-spacing:0.04em; padding:9px 18px; font-size:0.85rem; text-transform:uppercase; transition:background .15s;}
+  button:hover{background:var(--laiton-clair);}
+  button:disabled{opacity:0.5; cursor:not-allowed;}
+  button.danger{color:var(--rouge); border-color:var(--rouge); background:transparent; font-weight:normal; text-transform:none; padding:6px 10px; font-size:0.75rem;}
+  button.danger:hover{background:var(--rouge); color:var(--noir);}
+  button.discret{background:transparent; color:var(--gris); border:1px solid var(--ligne); font-weight:normal; text-transform:none; padding:6px 10px; font-size:0.75rem;}
+  button.discret:hover{color:var(--creme); border-color:var(--gris);}
+
+  table{width:100%; border-collapse:collapse; margin-top:4px;}
+  thead th{text-align:left; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--gris); padding:8px 10px; border-bottom:1px solid var(--ligne);}
+  tbody td{padding:10px 10px; border-bottom:1px solid var(--ligne); font-size:0.88rem; vertical-align:middle;}
+  tbody tr:hover{background:rgba(200,155,74,0.05);}
+  tbody tr:last-child td{border-bottom:none;}
+  td.nom{color:var(--laiton-clair); font-weight:bold;}
+  td.qte{font-family:'Courier New',monospace; font-size:1rem;}
+  td.actions{text-align:right; white-space:nowrap;}
+  td.maj{color:var(--gris); font-size:0.7rem;}
+
+  .badge{display:inline-block; padding:2px 8px; border-radius:10px; font-size:0.65rem; text-transform:uppercase; letter-spacing:0.05em; border:1px solid;}
+  .badge.ok{color:var(--vert); border-color:var(--vert);}
+  .badge.bas{color:var(--rouge); border-color:var(--rouge);}
+  .badge.cat{color:var(--laiton-clair); border-color:var(--laiton);}
+
+  .vide{text-align:center; padding:30px 10px; color:var(--gris); font-style:italic; font-size:0.85rem;}
+
+  .stepper{display:inline-flex; align-items:center; gap:6px;}
+  .stepper button{width:26px; height:26px; padding:0; display:flex; align-items:center; justify-content:center; background:transparent; border:1px solid var(--ligne); color:var(--laiton); font-size:1rem; font-weight:bold;}
+  .stepper button:hover{border-color:var(--laiton); background:rgba(200,155,74,0.1); color:var(--laiton-clair);}
+  .stepper span{min-width:34px; text-align:center; font-weight:bold;}
+  .stepper button.carton{width:auto; padding:0 8px; font-size:0.65rem;}
+
+  footer{text-align:center; color:var(--gris); font-size:0.7rem; margin-top:30px; letter-spacing:0.05em;}
+
+  .bilan-total{font-size:1.3rem; color:var(--laiton-clair); font-weight:bold; margin:10px 0;}
+  .bilan-ligne-serveuse{display:flex; justify-content:space-between; align-items:center; padding:10px; border:1px solid var(--ligne); border-radius:var(--radius); margin-bottom:8px; cursor:pointer;}
+  .bilan-ligne-serveuse:hover{border-color:var(--laiton);}
+  .bilan-ligne-serveuse.selectionne{border-color:var(--laiton); background:rgba(200,155,74,0.07);}
+
+  .cartes-totaux{display:flex; gap:14px; flex-wrap:wrap; margin-bottom:14px;}
+  .carte-total{flex:1 1 180px; border:1px solid var(--ligne); border-radius:var(--radius); padding:14px 16px; background:rgba(200,155,74,0.04); display:flex; flex-direction:column; gap:6px;}
+  .carte-total .etiquette{font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--gris);}
+  .carte-total .montant{font-size:1.3rem; font-weight:bold; color:var(--laiton-clair);}
+  #carte-solde.benefice{border-color:var(--vert);}
+  #carte-solde.benefice .montant{color:var(--vert);}
+  #carte-solde.perte{border-color:var(--rouge);}
+  #carte-solde.perte .montant{color:var(--rouge);}
+
+  .barre-recherche-date{display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; margin-bottom:16px; padding:12px; border:1px solid var(--ligne); border-radius:var(--radius); background:rgba(0,0,0,0.15);}
+  .barre-recherche-date .champ{flex:0 1 110px;}
+  .barre-recherche-date label{font-size:0.65rem;}
+
+  @media print{
+    body *{display:none !important;}
+    #zone-impression, #zone-impression *{display:block !important;}
+    #zone-impression{position:absolute; top:0; left:0; width:100%; color:#000; background:#fff; padding:20px; font-family: Georgia, serif;}
+    #zone-impression table{display:table !important; width:100%; border-collapse:collapse;}
+    #zone-impression tr{display:table-row !important;}
+    #zone-impression td, #zone-impression th{display:table-cell !important; border:1px solid #999; padding:6px; font-size:12px;}
+  }
+  #zone-impression{display:none;}
+
+  @media (max-width:560px){
+    body{padding:14px 8px 40px;}
+    header.fronton{padding:16px 14px;}
+    .fronton-top{flex-direction:column; align-items:flex-start;}
+    .qui-suis-je{text-align:left; width:100%;}
+    .qui-suis-je input{width:100%;}
+    .stat-line{gap:14px; font-size:0.72rem;}
+    .stat-line .val{font-size:0.95rem;}
+
+    nav.onglets{flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:4px; margin-bottom:14px;}
+    nav.onglets button{flex:0 0 auto; padding:9px 12px; font-size:0.72rem;}
+
+    .section-corps{padding:12px;}
+    form.ajout{flex-direction:column; align-items:stretch;}
+    .champ, .champ.petit{flex:1 1 auto; width:100%;}
+    form.ajout button{width:100%;}
+
+    .barre-recherche-date{flex-direction:column; align-items:stretch;}
+    .barre-recherche-date .champ{flex:1 1 auto; width:100%;}
+    .barre-recherche-date button{width:100%;}
+
+    .cartes-totaux{flex-direction:column;}
+    .carte-total{flex:1 1 auto;}
+
+    .filtre-categories{overflow-x:auto; -webkit-overflow-scrolling:touch; flex-wrap:nowrap; padding-bottom:4px;}
+    .filtre-categories button{flex:0 0 auto;}
+
+    .tableau-scroll{width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch;}
+    table{min-width:640px;}
+
+    td.actions{white-space:normal;}
+    .bilan-ligne-serveuse{flex-direction:column; align-items:flex-start; gap:4px;}
+  }
+
+  @media (max-width:380px){
+    h1{font-size:1.4rem;}
+    .stat-line{font-size:0.66rem; gap:10px;}
+  }
+
+  /* ===================== PAGE DE CONNEXION ===================== */
+  #ecran-connexion{
+    position:fixed; inset:0; z-index:999;
+    display:flex; align-items:center; justify-content:center;
+    background:
+      linear-gradient(160deg, rgba(10,8,6,0.78), rgba(15,10,8,0.82)),
+      url('images/fond-connexion.jpeg') center center / cover no-repeat;
+    padding:20px;
+  }
+  .carte-connexion{
+    width:100%; max-width:380px;
+    border:1px solid var(--ligne);
+    border-radius:6px;
+    background:rgba(15,12,10,0.88);
+    backdrop-filter:blur(3px);
+    padding:30px 30px 30px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.7);
+    text-align:center;
+  }
+  .logo-jpa{
+    width:120px; height:auto; margin:0 auto 16px;
+    display:block;
+  }
+  .logo-jpa img{ width:100%; height:auto; display:block; filter:drop-shadow(0 4px 14px rgba(0,0,0,0.5)); }
+
+  .carte-connexion h2{
+    font-family:Georgia,serif; color:var(--laiton-clair); margin:0 0 4px; font-size:1.3rem; letter-spacing:0.04em;
+  }
+  .carte-connexion p.sous-titre{
+    color:var(--gris); font-size:0.78rem; margin:0 0 24px; font-style:italic;
+  }
+  #form-connexion{ display:flex; flex-direction:column; gap:14px; text-align:left; }
+  #form-connexion label{ font-size:0.68rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--gris); margin-bottom:5px; display:block; }
+  #form-connexion input{ width:100%; }
+  #form-connexion button{ margin-top:6px; width:100%; padding:11px; }
+  #erreur-connexion{ color:var(--rouge); font-size:0.78rem; min-height:1em; text-align:left; }
+  .pied-connexion{ margin-top:20px; font-size:0.68rem; color:var(--gris); letter-spacing:0.04em; }
+
+  #app-principale{ display:none; }
+  .bouton-deconnexion{
+    margin-top:8px; background:transparent; border:1px solid var(--rouge); color:var(--rouge);
+    font-weight:normal; text-transform:none; padding:5px 12px; font-size:0.7rem;
+  }
+  .bouton-deconnexion:hover{ background:var(--rouge); color:var(--noir); }
+  .badge-role{ display:inline-block; padding:2px 8px; border-radius:10px; font-size:0.62rem; text-transform:uppercase; letter-spacing:0.05em; border:1px solid var(--laiton); color:var(--laiton-clair); margin-top:6px; }
+</style>
+</head>
+<body>
+<div id="ecran-connexion">
+  <div class="carte-connexion">
+    <div class="logo-jpa"><img src="images/logo-jpa.png" alt="Logo JPA"></div>
+    <h2>JPA CHILL ET VIBES</h2>
+    <p class="sous-titre">Registre de cave &amp; des ventes</p>
+    <form id="form-connexion">
+      <div>
+        <label for="login-identifiant">Identifiant</label>
+        <input id="login-identifiant" type="text" autocomplete="username" required>
+      </div>
+      <div>
+        <label for="login-mot-de-passe">Mot de passe</label>
+        <input id="login-mot-de-passe" type="password" autocomplete="current-password" required>
+      </div>
+      <div id="erreur-connexion"></div>
+      <button type="submit">Se connecter</button>
+    </form>
+    <div class="pied-connexion">Accès réservé au personnel autorisé de JPA Bar</div>
+  </div>
+</div>
+
+<div id="app-principale">
+<div class="wrap">
+
+  <header class="fronton">
+    <div class="fronton-top">
+      <h1>JPA BAR<span>Registre de cave &amp; des ventes</span></h1>
+      <div class="qui-suis-je">
+        <label>Connecté en tant que</label>
+        <div id="affichage-utilisateur" style="color:var(--laiton-clair); font-weight:bold; font-size:0.95rem;"></div>
+        <span class="badge-role" id="affichage-role"></span><br>
+        <button type="button" class="bouton-deconnexion" id="btn-deconnexion">Se déconnecter</button>
+      </div>
+    </div>
+    <div class="barre-dorée"></div>
+    <div class="stat-line">
+      <div><span class="val" id="total-boissons">0</span>boissons référencées</div>
+      <div><span class="val" id="total-bouteilles">0</span>bouteilles en cave</div>
+      <div><span class="val" id="total-alertes">0</span>en alerte stock bas</div>
+      <div><span class="val" id="total-serveuses">0</span>serveuses</div>
+    </div>
+    <div class="statut-connexion"><span class="point" id="point-statut"></span><span id="texte-statut">Connexion au serveur...</span></div>
+  </header>
+
+  <nav class="onglets">
+    <button data-page="boissons" class="actif">Boissons</button>
+    <button data-page="commandes">Commandes</button>
+    <button data-page="serveuses">Serveuses</button>
+    <button data-page="depenses">Dépenses</button>
+    <button data-page="solde">Solde</button>
+    <button data-page="bilans">Bilans</button>
+    <button data-page="utilisateurs" id="onglet-utilisateurs" style="display:none;">Comptes</button>
+  </nav>
+
+  <!-- ===================== PAGE BOISSONS ===================== -->
+  <div class="page actif" id="page-boissons">
+    <section class="section">
+      <div class="section-titre"><h2>Ajouter une boisson</h2></div>
+      <div class="section-corps">
+        <form class="ajout" id="form-boisson">
+          <div class="champ petit">
+            <label for="b-categorie">Catégorie</label>
+            <select id="b-categorie" required>
+              <option value="sobebras">Sobebras</option>
+              <option value="vin">Vins</option>
+              <option value="whisky">Whiskys</option>
+              <option value="autre">Autres</option>
+            </select>
+          </div>
+          <div class="champ">
+            <label for="b-nom">Nom</label>
+            <input id="b-nom" type="text" placeholder="ex. Heineken 33cl" required>
+          </div>
+
+          <div class="champ petit" id="champ-taille">
+            <label for="b-taille">Taille bouteille</label>
+            <select id="b-taille">
+              <option value="petite">Petite (24/casier)</option>
+              <option value="grande">Grande (12/casier)</option>
+            </select>
+          </div>
+
+          <div class="champ petit" id="champ-prix-achat-carton">
+            <label id="label-prix-achat-carton" for="b-prix-achat-carton">Prix d'achat / casier</label>
+            <input id="b-prix-achat-carton" type="number" min="0" placeholder="0">
+          </div>
+
+          <div class="champ petit" id="champ-prix-achat-unite" style="display:none;">
+            <label for="b-prix-achat-unite">Prix d'achat / unité</label>
+            <input id="b-prix-achat-unite" type="number" min="0" placeholder="0">
+          </div>
+
+          <div class="champ petit">
+            <label for="b-prix-vente-bouteille">Prix de vente bouteille</label>
+            <input id="b-prix-vente-bouteille" type="number" min="0" placeholder="0" required>
+          </div>
+
+          <div class="champ petit" id="champ-prix-verre-petit" style="display:none;">
+            <label for="b-prix-verre-petit">Prix verre (petit)</label>
+            <input id="b-prix-verre-petit" type="number" min="0" placeholder="0">
+          </div>
+          <div class="champ petit" id="champ-prix-verre-grand" style="display:none;">
+            <label for="b-prix-verre-grand">Prix verre (grand)</label>
+            <input id="b-prix-verre-grand" type="number" min="0" placeholder="0">
+          </div>
+
+          <div class="champ petit">
+            <label for="b-stock">Stock initial (bouteilles)</label>
+            <input id="b-stock" type="number" min="0" placeholder="0">
+          </div>
+          <div class="champ petit">
+            <label for="b-seuil">Seuil alerte</label>
+            <input id="b-seuil" type="number" min="0" placeholder="6">
+          </div>
+          <button type="submit">Ajouter</button>
+        </form>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-titre"><h2>Liste des boissons</h2></div>
+      <div class="section-corps">
+        <div class="filtre-categories" id="filtre-categories">
+          <button data-cat="tout" class="actif">Tout</button>
+          <button data-cat="sobebras">Sobebras</button>
+          <button data-cat="vin">Vins</button>
+          <button data-cat="whisky">Whiskys</button>
+          <button data-cat="autre">Autres</button>
+        </div>
+        <div class="tableau-scroll"><table>
+          <thead><tr><th>Boisson</th><th>Catégorie</th><th>Stock</th><th>Prix vente</th><th>Statut</th><th>Dernière modif.</th><th></th></tr></thead>
+          <tbody id="liste-boissons"></tbody>
+        </table></div>
+        <div class="vide" id="vide-boissons" style="display:none;">Aucune boisson enregistrée pour le moment.</div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ===================== PAGE COMMANDES ===================== -->
+  <div class="page" id="page-commandes">
+    <section class="section">
+      <div class="section-titre"><h2>Nouvelle commande</h2></div>
+      <div class="section-corps">
+        <form class="ajout" id="form-commande">
+          <div class="champ">
+            <label for="c-serveuse">Serveuse</label>
+            <select id="c-serveuse" required></select>
+          </div>
+          <div class="champ">
+            <label for="c-boisson">Boisson</label>
+            <select id="c-boisson" required></select>
+          </div>
+          <div class="champ petit">
+            <label for="c-type-vente">Vente</label>
+            <select id="c-type-vente" required>
+              <option value="bouteille">Bouteille</option>
+            </select>
+          </div>
+          <div class="champ petit">
+            <label for="c-quantite">Quantité</label>
+            <input id="c-quantite" type="number" min="0.01" step="0.01" placeholder="1" required>
+          </div>
+          <div class="champ petit">
+            <label>Total</label>
+            <input id="c-total-affiche" type="text" disabled value="0">
+          </div>
+          <button type="submit">Enregistrer</button>
+        </form>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-titre"><h2>Nouveau retour</h2></div>
+      <div class="section-corps">
+        <form class="ajout" id="form-retour">
+          <div class="champ">
+            <label for="r-serveuse">Serveuse</label>
+            <select id="r-serveuse" required></select>
+          </div>
+          <div class="champ">
+            <label for="r-boisson">Boisson</label>
+            <select id="r-boisson" required></select>
+          </div>
+          <div class="champ petit">
+            <label for="r-type-vente">Vente</label>
+            <select id="r-type-vente" required>
+              <option value="bouteille">Bouteille</option>
+            </select>
+          </div>
+          <div class="champ petit">
+            <label for="r-quantite">Quantité retournée</label>
+            <input id="r-quantite" type="number" min="0.01" step="0.01" placeholder="1" required>
+          </div>
+          <div class="champ petit">
+            <label>Total</label>
+            <input id="r-total-affiche" type="text" disabled value="0">
+          </div>
+          <button type="submit">Enregistrer le retour</button>
+        </form>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-titre"><h2>Totaux des ventes (net des retours)</h2></div>
+      <div class="section-corps">
+        <div class="cartes-totaux">
+          <div class="carte-total"><span class="etiquette">Commandes du jour</span><span class="montant" id="total-jour-commandes">0 F</span></div>
+          <div class="carte-total"><span class="etiquette">Retours du jour</span><span class="montant" id="total-jour-retours">0 F</span></div>
+          <div class="carte-total"><span class="etiquette">Net du jour</span><span class="montant" id="total-jour-net">0 F</span></div>
+        </div>
+        <div class="cartes-totaux">
+          <div class="carte-total"><span class="etiquette">Commandes du mois</span><span class="montant" id="total-mois-commandes">0 F</span></div>
+          <div class="carte-total"><span class="etiquette">Retours du mois</span><span class="montant" id="total-mois-retours">0 F</span></div>
+          <div class="carte-total"><span class="etiquette">Net du mois</span><span class="montant" id="total-mois-net">0 F</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-titre"><h2>Commandes</h2></div>
+      <div class="section-corps">
+        <div class="barre-recherche-date" id="filtre-date-commandes"></div>
+        <div class="tableau-scroll"><table>
+          <thead><tr><th>Serveuse</th><th>Boisson</th><th>Vente</th><th>Qté</th><th>Prix unit.</th><th>Total</th><th>Quand</th><th></th></tr></thead>
+          <tbody id="liste-commandes"></tbody>
+        </table></div>
+        <div class="vide" id="vide-commandes" style="display:none;">Aucune commande enregistrée.</div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-titre"><h2>Retours</h2></div>
+      <div class="section-corps">
+        <div class="barre-recherche-date" id="filtre-date-retours"></div>
+        <div class="tableau-scroll"><table>
+          <thead><tr><th>Serveuse</th><th>Boisson</th><th>Vente</th><th>Qté</th><th>Prix unit.</th><th>Total</th><th>Quand</th><th></th></tr></thead>
+          <tbody id="liste-retours"></tbody>
+        </table></div>
+        <div class="vide" id="vide-retours" style="display:none;">Aucun retour enregistré.</div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ===================== PAGE SERVEUSES ===================== -->
+  <div class="page" id="page-serveuses">
+    <section class="section">
+      <div class="section-titre"><h2>Ajouter une serveuse</h2></div>
+      <div class="section-corps">
+        <form class="ajout" id="form-serveuse">
+          <div class="champ"><label for="s-nom">Nom</label><input id="s-nom" type="text" placeholder="ex. Houngbo" required></div>
+          <div class="champ"><label for="s-prenom">Prénom</label><input id="s-prenom" type="text" placeholder="ex. Akoua" required></div>
+          <button type="submit">Ajouter</button>
+        </form>
+      </div>
+    </section>
+    <section class="section">
+      <div class="section-titre"><h2>Liste des serveuses</h2></div>
+      <div class="section-corps">
+        <div class="tableau-scroll"><table>
+          <thead><tr><th>Nom</th><th>Prénom</th><th>Ajoutée par</th><th></th></tr></thead>
+          <tbody id="liste-serveuses"></tbody>
+        </table></div>
+        <div class="vide" id="vide-serveuses" style="display:none;">Aucune serveuse enregistrée.</div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ===================== PAGE DEPENSES ===================== -->
+  <div class="page" id="page-depenses">
+    <section class="section">
+      <div class="section-titre"><h2>Ajouter une dépense</h2></div>
+      <div class="section-corps">
+        <form class="ajout" id="form-depense">
+          <div class="champ petit">
+            <label for="d-categorie">Catégorie</label>
+            <select id="d-categorie">
+              <option value="Salaire">Salaire</option>
+              <option value="Achat">Achat</option>
+              <option value="Facture courant">Facture courant</option>
+              <option value="Eau">Eau</option>
+              <option value="Autre">Autre</option>
+            </select>
+          </div>
+          <div class="champ">
+            <label for="d-libelle">Détail (optionnel)</label>
+            <input id="d-libelle" type="text" placeholder="ex. Salaire serveuse Akoua">
+          </div>
+          <div class="champ petit">
+            <label for="d-montant">Montant</label>
+            <input id="d-montant" type="number" min="0" placeholder="0" required>
+          </div>
+          <div class="champ petit">
+            <label for="d-date">Date</label>
+            <input id="d-date" type="date">
+          </div>
+          <button type="submit">Ajouter</button>
+        </form>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-titre"><h2>Dépenses</h2></div>
+      <div class="section-corps">
+        <div class="cartes-totaux">
+          <div class="carte-total"><span class="etiquette">Total affiché (selon filtre)</span><span class="montant" id="total-depenses-affiche">0 F</span></div>
+        </div>
+        <div class="champ" style="max-width:320px; margin-bottom:14px;">
+          <label for="d-recherche-boisson">Rechercher (ex. nom d'une boisson)</label>
+          <input id="d-recherche-boisson" type="text" placeholder="ex. Youki">
+        </div>
+        <div class="barre-recherche-date" id="filtre-date-depenses"></div>
+        <div class="tableau-scroll"><table>
+          <thead><tr><th>Date</th><th>Catégorie</th><th>Détail</th><th>Montant</th><th>Ajoutée par</th><th></th></tr></thead>
+          <tbody id="liste-depenses"></tbody>
+        </table></div>
+        <div class="vide" id="vide-depenses" style="display:none;">Aucune dépense enregistrée pour cette période.</div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ===================== PAGE SOLDE ===================== -->
+  <div class="page" id="page-solde">
+    <section class="section">
+      <div class="section-titre"><h2>Solde de la période</h2></div>
+      <div class="section-corps">
+        <div class="barre-recherche-date" id="filtre-date-solde"></div>
+        <div class="cartes-totaux">
+          <div class="carte-total"><span class="etiquette">Total ventes</span><span class="montant" id="solde-total-ventes">0 F</span></div>
+          <div class="carte-total"><span class="etiquette">Total dépenses</span><span class="montant" id="solde-total-depenses">0 F</span></div>
+          <div class="carte-total" id="carte-solde"><span class="etiquette">Solde</span><span class="montant" id="solde-resultat">0 F</span></div>
+        </div>
+        <p id="solde-mention" style="text-align:center; font-size:0.9rem; margin-top:6px;"></p>
+      </div>
+    </section>
+  </div>
+
+  <!-- ===================== PAGE BILANS ===================== -->
+  <div class="page" id="page-bilans">
+    <section class="section">
+      <div class="section-titre"><h2>Bilan par serveuse</h2></div>
+      <div class="section-corps">
+        <div id="liste-bilan-serveuses"></div>
+        <div id="detail-bilan" style="display:none; margin-top:20px;">
+          <div class="cartes-totaux">
+            <div class="carte-total"><span class="etiquette">Total commandes</span><span class="montant" id="bilan-total-commandes">0 F</span></div>
+            <div class="carte-total"><span class="etiquette">Total retours</span><span class="montant" id="bilan-total-retours">0 F</span></div>
+            <div class="carte-total"><span class="etiquette">Net</span><span class="montant" id="bilan-total-net">0 F</span></div>
+          </div>
+          <div class="barre-recherche-date" id="filtre-date-bilan"></div>
+
+          <h3 style="color:var(--laiton-clair); font-size:0.9rem; margin:18px 0 8px;">Commandes</h3>
+          <div class="tableau-scroll"><table>
+            <thead><tr><th>Boisson</th><th>Vente</th><th>Qté</th><th>Prix unit.</th><th>Total</th><th>Quand</th><th></th></tr></thead>
+            <tbody id="liste-bilan-commandes"></tbody>
+          </table></div>
+
+          <h3 style="color:var(--laiton-clair); font-size:0.9rem; margin:18px 0 8px;">Retours</h3>
+          <div class="tableau-scroll"><table>
+            <thead><tr><th>Boisson</th><th>Vente</th><th>Qté</th><th>Prix unit.</th><th>Total</th><th>Quand</th></tr></thead>
+            <tbody id="liste-bilan-retours"></tbody>
+          </table></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ===================== PAGE UTILISATEURS (admin) ===================== -->
+  <div class="page" id="page-utilisateurs">
+    <section class="section">
+      <div class="section-titre"><h2>Créer un compte</h2></div>
+      <div class="section-corps">
+        <form class="ajout" id="form-utilisateur">
+          <div class="champ">
+            <label for="u-identifiant">Identifiant de connexion</label>
+            <input id="u-identifiant" type="text" placeholder="ex. akoua" required>
+          </div>
+          <div class="champ">
+            <label for="u-motdepasse">Mot de passe</label>
+            <input id="u-motdepasse" type="text" placeholder="à transmettre à la personne" required>
+          </div>
+          <div class="champ">
+            <label for="u-nom">Nom</label>
+            <input id="u-nom" type="text" placeholder="ex. Houngbo" required>
+          </div>
+          <div class="champ">
+            <label for="u-prenom">Prénom</label>
+            <input id="u-prenom" type="text" placeholder="ex. Akoua" required>
+          </div>
+          <div class="champ petit">
+            <label for="u-role">Rôle</label>
+            <select id="u-role">
+              <option value="serveuse">Serveuse</option>
+              <option value="gerant">Gérant</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+          <div class="champ" id="champ-u-serveuse">
+            <label for="u-serveuse">Serveuse liée (si rôle serveuse)</label>
+            <select id="u-serveuse"><option value="">— aucune —</option></select>
+          </div>
+          <button type="submit">Créer le compte</button>
+        </form>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-titre"><h2>Comptes existants</h2></div>
+      <div class="section-corps">
+        <div class="tableau-scroll"><table>
+          <thead><tr><th>Identifiant</th><th>Nom</th><th>Rôle</th><th>Statut</th><th></th></tr></thead>
+          <tbody id="liste-utilisateurs"></tbody>
+        </table></div>
+        <div class="vide" id="vide-utilisateurs" style="display:none;">Aucun compte pour le moment.</div>
+      </div>
+    </section>
+  </div>
+
+  <footer>JPA BAR — registre partagé · les modifications sont visibles par tous après rechargement</footer>
+</div>
+
+</div>
+<div id="zone-impression"></div>
+
+<script>
+  let boissons = [], serveuses = [], commandes = [], retours = [], depenses = [], bilansResume = { commandes: [], retours: [] };
+  let filtreCategorieActif = 'tout';
+  let serveuseSelectionneeBilan = null; // {id, nom, prenom}
+
+  const filtres = {
+    commandes: { jour:'', mois:'', annee:'' },
+    retours: { jour:'', mois:'', annee:'' },
+    depenses: { jour:'', mois:'', annee:'' },
+    solde: { jour:'', mois:'', annee:'' },
+    bilan: { jour:'', mois:'', annee:'' },
+  };
+
+  let utilisateurActuel = null; // {id, role, nom, prenom, serveuse_id}
+  let comptesUtilisateurs = [];
+
+  function monNom(){ return utilisateurActuel ? utilisateurActuel.prenom : 'Inconnu'; }
+
+  function nomRoleLisible(r){ return {admin:'Admin', gerant:'Gérant', serveuse:'Serveuse'}[r] || r; }
+
+  // ===================== CONNEXION =====================
+  document.getElementById('form-connexion').addEventListener('submit', async e => {
+    e.preventDefault();
+    const nom_utilisateur = document.getElementById('login-identifiant').value.trim();
+    const mot_de_passe = document.getElementById('login-mot-de-passe').value;
+    const erreurZone = document.getElementById('erreur-connexion');
+    erreurZone.textContent = '';
+    try{
+      const res = await fetch('/api/connexion', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ nom_utilisateur, mot_de_passe })
+      });
+      const data = await res.json();
+      if(!res.ok){ erreurZone.textContent = data.erreur || 'Connexion impossible.'; return; }
+      utilisateurActuel = data;
+      demarrerApplication();
+    }catch(err){ erreurZone.textContent = 'Impossible de joindre le serveur.'; }
+  });
+
+  document.getElementById('btn-deconnexion').addEventListener('click', async () => {
+    try{ await fetch('/api/deconnexion', { method:'POST' }); }catch(e){}
+    utilisateurActuel = null;
+    document.getElementById('app-principale').style.display = 'none';
+    document.getElementById('ecran-connexion').style.display = 'flex';
+    document.getElementById('login-mot-de-passe').value = '';
+  });
+
+  function appliquerRestrictionsRole(){
+    const role = utilisateurActuel.role;
+    document.getElementById('affichage-utilisateur').textContent = utilisateurActuel.prenom + ' ' + utilisateurActuel.nom;
+    document.getElementById('affichage-role').textContent = nomRoleLisible(role);
+
+    const ongletsVisibles = {
+      admin: ['boissons','commandes','serveuses','depenses','solde','bilans','utilisateurs'],
+      gerant: ['boissons','commandes','serveuses','depenses','solde','bilans'],
+      serveuse: ['commandes'],
+    }[role] || ['commandes'];
+
+    document.querySelectorAll('nav.onglets button').forEach(btn => {
+      const visible = ongletsVisibles.includes(btn.dataset.page);
+      btn.style.display = visible ? '' : 'none';
+    });
+    // Active le premier onglet visible
+    const premier = document.querySelector('nav.onglets button:not([style*="display: none"])');
+    if(premier){
+      document.querySelectorAll('nav.onglets button').forEach(b => b.classList.remove('actif'));
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('actif'));
+      premier.classList.add('actif');
+      document.getElementById('page-' + premier.dataset.page).classList.add('actif');
+    }
+
+    // Une serveuse ne doit pas pouvoir choisir une autre serveuse dans le formulaire de commande
+    const champServeuseCommande = document.getElementById('c-serveuse').closest('.champ');
+    if(role === 'serveuse' && champServeuseCommande){
+      champServeuseCommande.style.display = 'none';
+      document.getElementById('c-serveuse').dataset.forceValeur = utilisateurActuel.serveuse_id;
+    }
+    const champServeuseRetour = document.getElementById('r-serveuse').closest('.champ');
+    if(role === 'serveuse' && champServeuseRetour){
+      champServeuseRetour.style.display = 'none';
+      document.getElementById('r-serveuse').dataset.forceValeur = utilisateurActuel.serveuse_id;
+    }
+  }
+
+  async function demarrerApplication(){
+    document.getElementById('ecran-connexion').style.display = 'none';
+    document.getElementById('app-principale').style.display = 'block';
+    appliquerRestrictionsRole();
+    await chargerTout();
+  }
+
+  async function verifierSessionExistante(){
+    try{
+      const res = await fetch('/api/moi');
+      if(!res.ok) throw new Error('non connecté');
+      utilisateurActuel = await res.json();
+      await demarrerApplication();
+    }catch(e){
+      document.getElementById('ecran-connexion').style.display = 'flex';
+    }
+  }
+
+  // --- Navigation entre onglets ---
+  document.querySelectorAll('nav.onglets button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('nav.onglets button').forEach(b => b.classList.remove('actif'));
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('actif'));
+      btn.classList.add('actif');
+      document.getElementById('page-' + btn.dataset.page).classList.add('actif');
+    });
+  });
+
+  function escapeHtml(str){ const d = document.createElement('div'); d.textContent = str ?? ''; return d.innerHTML; }
+  function formaterDate(iso){
+    if(!iso) return '—';
+    const d = new Date(iso);
+    return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'}) + ' ' + d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+  }
+  function formaterPrix(n){ return Number(n || 0).toLocaleString('fr-FR') + ' F'; }
+  function nomCategorie(c){ return {sobebras:'Sobebras', vin:'Vin', whisky:'Whisky', autre:'Autre'}[c] || c; }
+
+  async function appel(url, options){
+    const res = await fetch(url, options);
+    if(!res.ok){
+      const data = await res.json().catch(()=>({erreur:'Erreur serveur'}));
+      throw new Error(data.erreur || 'Erreur serveur');
+    }
+    return res.json();
+  }
+
+  async function chargerTout(){
+    try{
+      const role = utilisateurActuel.role;
+      const appelsBase = [appel('/api/boissons'), appel('/api/serveuses'), appel('/api/commandes'), appel('/api/retours')];
+      const [b, s, c, r] = await Promise.all(appelsBase);
+      boissons = b; serveuses = s; commandes = c; retours = r;
+
+      if(role === 'admin' || role === 'gerant'){
+        const [d, br] = await Promise.all([appel('/api/depenses'), appel('/api/bilans-resume')]);
+        depenses = d; bilansResume = br;
+      } else {
+        depenses = []; bilansResume = { commandes: [], retours: [] };
+      }
+      if(role === 'admin'){
+        comptesUtilisateurs = await appel('/api/utilisateurs');
+        rendreUtilisateurs();
+      }
+
+      document.getElementById('point-statut').classList.remove('hors');
+      document.getElementById('texte-statut').textContent = 'Connecté au registre partagé';
+      rendreBoissons(); rendreSelects(); rendreServeuses();
+      rendreCommandes(); rendreRetours();
+      if(role === 'admin' || role === 'gerant'){ rendreDepenses(); rendreSolde(); rendreBilanListe(); }
+    }catch(e){
+      if(e.message === 'Connexion requise.' || e.message === 'Session invalide.'){
+        document.getElementById('app-principale').style.display = 'none';
+        document.getElementById('ecran-connexion').style.display = 'flex';
+        utilisateurActuel = null;
+        return;
+      }
+      document.getElementById('point-statut').classList.add('hors');
+      document.getElementById('texte-statut').textContent = 'Hors connexion — impossible de joindre le serveur';
+    }
+  }
+
+  // ===================== BARRE DE RECHERCHE PAR DATE (réutilisable) =====================
+  function construireBarreDate(conteneurId, cle, onChange){
+    const conteneur = document.getElementById(conteneurId);
+    const jours = Array.from({length:31}, (_,i) => i+1);
+    const mois = [
+      [1,'Janvier'],[2,'Février'],[3,'Mars'],[4,'Avril'],[5,'Mai'],[6,'Juin'],
+      [7,'Juillet'],[8,'Août'],[9,'Septembre'],[10,'Octobre'],[11,'Novembre'],[12,'Décembre']
+    ];
+    const anneeActuelle = new Date().getFullYear();
+    const annees = Array.from({length:6}, (_,i) => anneeActuelle - 4 + i);
+
+    conteneur.innerHTML = `
+      <div class="champ"><label>Jour</label>
+        <select data-r="jour"><option value="">Tous</option>${jours.map(j=>`<option value="${j}">${j}</option>`).join('')}</select>
+      </div>
+      <div class="champ"><label>Mois</label>
+        <select data-r="mois"><option value="">Tous</option>${mois.map(([n,l])=>`<option value="${n}">${l}</option>`).join('')}</select>
+      </div>
+      <div class="champ"><label>Année</label>
+        <select data-r="annee"><option value="">Toutes</option>${annees.map(a=>`<option value="${a}">${a}</option>`).join('')}</select>
+      </div>
+      <button type="button" class="discret" data-r="reset">Réinitialiser</button>
+    `;
+    conteneur.querySelector('[data-r="jour"]').value = filtres[cle].jour;
+    conteneur.querySelector('[data-r="mois"]').value = filtres[cle].mois;
+    conteneur.querySelector('[data-r="annee"]').value = filtres[cle].annee;
+
+    conteneur.querySelectorAll('select').forEach(sel => {
+      sel.addEventListener('change', () => {
+        filtres[cle][sel.dataset.r] = sel.value;
+        onChange();
+      });
+    });
+    conteneur.querySelector('[data-r="reset"]').addEventListener('click', () => {
+      filtres[cle] = { jour:'', mois:'', annee:'' };
+      construireBarreDate(conteneurId, cle, onChange);
+      onChange();
+    });
+  }
+
+  function correspondDate(iso, cle){
+    const f = filtres[cle];
+    if(!f.jour && !f.mois && !f.annee) return true;
+    const d = new Date(iso);
+    if(f.jour && d.getDate() !== Number(f.jour)) return false;
+    if(f.mois && (d.getMonth()+1) !== Number(f.mois)) return false;
+    if(f.annee && d.getFullYear() !== Number(f.annee)) return false;
+    return true;
+  }
+
+  // ===================== BOISSONS : formulaire dynamique =====================
+  const catSelect = document.getElementById('b-categorie');
+  catSelect.addEventListener('change', majChampsFormulaireBoisson);
+  function majChampsFormulaireBoisson(){
+    const cat = catSelect.value;
+    document.getElementById('champ-taille').style.display = cat === 'sobebras' ? 'flex' : 'none';
+    document.getElementById('champ-prix-achat-carton').style.display = (cat === 'sobebras' || cat === 'vin') ? 'flex' : 'none';
+    document.getElementById('champ-prix-achat-unite').style.display = (cat === 'whisky' || cat === 'autre') ? 'flex' : 'none';
+    document.getElementById('champ-prix-verre-petit').style.display = cat === 'whisky' ? 'flex' : 'none';
+    document.getElementById('champ-prix-verre-grand').style.display = cat === 'whisky' ? 'flex' : 'none';
+    document.getElementById('label-prix-achat-carton').textContent = cat === 'vin' ? "Prix d'achat / carton (6)" : "Prix d'achat / casier";
+  }
+  majChampsFormulaireBoisson();
+
+  document.getElementById('form-boisson').addEventListener('submit', async e => {
+    e.preventDefault();
+    const categorie = catSelect.value;
+    const nom = document.getElementById('b-nom').value.trim();
+    const taille = categorie === 'sobebras' ? document.getElementById('b-taille').value : null;
+    const unites_par_carton = categorie === 'sobebras' ? (taille === 'petite' ? 24 : 12) : (categorie === 'vin' ? 6 : null);
+    const prix_achat_carton = (categorie === 'sobebras' || categorie === 'vin') ? (parseFloat(document.getElementById('b-prix-achat-carton').value) || 0) : null;
+    const prix_achat_unite = (categorie === 'whisky' || categorie === 'autre') ? (parseFloat(document.getElementById('b-prix-achat-unite').value) || 0) : null;
+    const prix_vente_bouteille = parseFloat(document.getElementById('b-prix-vente-bouteille').value) || 0;
+    const prix_vente_verre_petit = categorie === 'whisky' ? (parseFloat(document.getElementById('b-prix-verre-petit').value) || 0) : null;
+    const prix_vente_verre_grand = categorie === 'whisky' ? (parseFloat(document.getElementById('b-prix-verre-grand').value) || 0) : null;
+    const stock_bouteilles = parseFloat(document.getElementById('b-stock').value) || 0;
+    const seuilRaw = document.getElementById('b-seuil').value;
+    const seuil = seuilRaw === '' ? 6 : parseFloat(seuilRaw);
+    if(!nom) return;
+    try{
+      await appel('/api/boissons', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ categorie, nom, taille, unites_par_carton, prix_achat_carton, prix_achat_unite,
+          prix_vente_bouteille, prix_vente_verre_petit, prix_vente_verre_grand, stock_bouteilles, seuil, employe: monNom() })
+      });
+      e.target.reset();
+      majChampsFormulaireBoisson();
+      document.getElementById('b-nom').focus();
+      await chargerTout();
+    }catch(err){ alert(err.message); }
+  });
+
+  document.getElementById('filtre-categories').addEventListener('click', e => {
+    const btn = e.target.closest('button');
+    if(!btn) return;
+    filtreCategorieActif = btn.dataset.cat;
+    document.querySelectorAll('#filtre-categories button').forEach(b => b.classList.remove('actif'));
+    btn.classList.add('actif');
+    rendreBoissons();
+  });
+
+  function statutBadge(stock, seuil){
+    return Number(stock) <= Number(seuil || 0) ? '<span class="badge bas">Stock bas</span>' : '<span class="badge ok">OK</span>';
+  }
+
+  function rendreBoissons(){
+    const corps = document.getElementById('liste-boissons');
+    const vide = document.getElementById('vide-boissons');
+    const liste = filtreCategorieActif === 'tout' ? boissons : boissons.filter(b => b.categorie === filtreCategorieActif);
+    corps.innerHTML = '';
+    vide.style.display = liste.length === 0 ? 'block' : 'none';
+
+    liste.forEach(b => {
+      const casierBtn = (b.categorie === 'sobebras' || b.categorie === 'vin')
+        ? `<button type="button" class="carton" onclick="ajouterCasier(${b.id}, ${b.stock_bouteilles}, ${b.unites_par_carton})">+1 ${b.categorie==='vin'?'carton':'casier'}</button>
+           <button type="button" class="carton" onclick="ajouterCasier(${b.id}, ${b.stock_bouteilles}, ${b.unites_par_carton/2})">+½ ${b.categorie==='vin'?'carton':'casier'}</button>`
+        : '';
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="nom">${escapeHtml(b.nom)}</td>
+        <td><span class="badge cat">${nomCategorie(b.categorie)}</span></td>
+        <td class="qte">
+          <div class="stepper">
+            <button type="button" onclick="changerStock(${b.id}, ${b.stock_bouteilles}, -1)">−</button>
+            <span>${Number(b.stock_bouteilles)}</span>
+            <button type="button" onclick="changerStock(${b.id}, ${b.stock_bouteilles}, 1)">+</button>
+            ${casierBtn}
+          </div>
+        </td>
+        <td class="qte">${formaterPrix(b.prix_vente_bouteille)}${b.categorie==='whisky' ? ' / verre: '+formaterPrix(b.prix_vente_verre_petit)+'-'+formaterPrix(b.prix_vente_verre_grand) : ''}</td>
+        <td>${statutBadge(b.stock_bouteilles, b.seuil)}</td>
+        <td class="maj">${b.modifie_par ? escapeHtml(b.modifie_par)+' · ' : ''}${formaterDate(b.modifie_le)}</td>
+        <td class="actions"><button type="button" class="danger" onclick="supprimerBoisson(${b.id})">Retirer</button></td>
+      `;
+      corps.appendChild(tr);
+    });
+    majStats();
+  }
+
+  async function changerStock(id, actuel, delta){
+    const nouveau = Math.max(0, Number(actuel) + delta);
+    try{
+      await appel('/api/boissons/' + id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ stock_bouteilles: nouveau, employe: monNom() }) });
+      await chargerTout();
+    }catch(e){ alert(e.message); }
+  }
+  async function ajouterCasier(id, actuel, unites){
+    await changerStock(id, actuel, Number(unites));
+  }
+  async function supprimerBoisson(id){
+    if(!confirm('Retirer cette boisson du registre ?')) return;
+    try{ await appel('/api/boissons/' + id, { method:'DELETE' }); await chargerTout(); }catch(e){ alert(e.message); }
+  }
+
+  function majStats(){
+    document.getElementById('total-boissons').textContent = boissons.length;
+    document.getElementById('total-bouteilles').textContent = boissons.reduce((s,b)=>s+Number(b.stock_bouteilles),0);
+    document.getElementById('total-alertes').textContent = boissons.filter(b => Number(b.stock_bouteilles) <= Number(b.seuil||0)).length;
+    document.getElementById('total-serveuses').textContent = serveuses.length;
+  }
+
+  // ===================== SERVEUSES =====================
+  document.getElementById('form-serveuse').addEventListener('submit', async e => {
+    e.preventDefault();
+    const nom = document.getElementById('s-nom').value.trim();
+    const prenom = document.getElementById('s-prenom').value.trim();
+    if(!nom || !prenom) return;
+    try{
+      await appel('/api/serveuses', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ nom, prenom, employe: monNom() }) });
+      e.target.reset();
+      await chargerTout();
+    }catch(err){ alert(err.message); }
+  });
+
+  function rendreServeuses(){
+    const corps = document.getElementById('liste-serveuses');
+    const vide = document.getElementById('vide-serveuses');
+    corps.innerHTML = '';
+    vide.style.display = serveuses.length === 0 ? 'block' : 'none';
+    serveuses.forEach(s => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="nom">${escapeHtml(s.nom)}</td>
+        <td>${escapeHtml(s.prenom)}</td>
+        <td class="maj">${s.modifie_par ? escapeHtml(s.modifie_par) : '—'}</td>
+        <td class="actions"><button type="button" class="danger" onclick="supprimerServeuse(${s.id})">Retirer</button></td>
+      `;
+      corps.appendChild(tr);
+    });
+  }
+  async function supprimerServeuse(id){
+    if(!confirm("Retirer cette serveuse de la liste active ? Ses commandes passées resteront visibles dans les bilans.")) return;
+    try{ await appel('/api/serveuses/' + id, { method:'DELETE' }); await chargerTout(); }catch(e){ alert(e.message); }
+  }
+
+  // ===================== COMMANDES =====================
+  function rendreSelects(){
+    const selServeuse = document.getElementById('c-serveuse');
+    const valServeuse = selServeuse.value;
+    selServeuse.innerHTML = '<option value="">— choisir —</option>' + serveuses.map(s => `<option value="${s.id}">${escapeHtml(s.prenom)} ${escapeHtml(s.nom)}</option>`).join('');
+    selServeuse.value = selServeuse.dataset.forceValeur || valServeuse;
+
+    const selBoisson = document.getElementById('c-boisson');
+    const valBoisson = selBoisson.value;
+    selBoisson.innerHTML = '<option value="">— choisir —</option>' + boissons.map(b => `<option value="${b.id}" data-cat="${b.categorie}">${escapeHtml(b.nom)} (${nomCategorie(b.categorie)})</option>`).join('');
+    selBoisson.value = valBoisson;
+    majTypeVenteSelon('c');
+
+    // Formulaire de retour : mêmes listes
+    const selServeuseR = document.getElementById('r-serveuse');
+    const valServeuseR = selServeuseR.value;
+    selServeuseR.innerHTML = '<option value="">— choisir —</option>' + serveuses.map(s => `<option value="${s.id}">${escapeHtml(s.prenom)} ${escapeHtml(s.nom)}</option>`).join('');
+    selServeuseR.value = selServeuseR.dataset.forceValeur || valServeuseR;
+
+    const selBoissonR = document.getElementById('r-boisson');
+    const valBoissonR = selBoissonR.value;
+    selBoissonR.innerHTML = '<option value="">— choisir —</option>' + boissons.map(b => `<option value="${b.id}" data-cat="${b.categorie}">${escapeHtml(b.nom)} (${nomCategorie(b.categorie)})</option>`).join('');
+    selBoissonR.value = valBoissonR;
+    majTypeVenteSelon('r');
+  }
+
+  document.getElementById('c-boisson').addEventListener('change', () => majTypeVenteSelon('c'));
+  document.getElementById('r-boisson').addEventListener('change', () => majTypeVenteSelon('r'));
+  function majTypeVenteSelon(prefixe){
+    const opt = document.getElementById(prefixe + '-boisson').selectedOptions[0];
+    const cat = opt ? opt.dataset.cat : null;
+    const sel = document.getElementById(prefixe + '-type-vente');
+    if(cat === 'whisky'){
+      sel.innerHTML = '<option value="bouteille">Bouteille</option><option value="verre_petit">Verre (petit)</option><option value="verre_grand">Verre (grand)</option>';
+    } else {
+      sel.innerHTML = '<option value="bouteille">Bouteille / Unité</option>';
+    }
+    majTotalAffiche(prefixe);
+  }
+  document.getElementById('c-type-vente').addEventListener('change', () => majTotalAffiche('c'));
+  document.getElementById('c-quantite').addEventListener('input', () => majTotalAffiche('c'));
+  document.getElementById('r-type-vente').addEventListener('change', () => majTotalAffiche('r'));
+  document.getElementById('r-quantite').addEventListener('input', () => majTotalAffiche('r'));
+  function majTotalAffiche(prefixe){
+    const boissonId = document.getElementById(prefixe + '-boisson').value;
+    const b = boissons.find(x => String(x.id) === String(boissonId));
+    const type = document.getElementById(prefixe + '-type-vente').value;
+    const qte = parseFloat(document.getElementById(prefixe + '-quantite').value) || 0;
+    let prix = 0;
+    if(b){
+      if(type === 'bouteille') prix = Number(b.prix_vente_bouteille || 0);
+      else if(type === 'verre_petit') prix = Number(b.prix_vente_verre_petit || 0);
+      else if(type === 'verre_grand') prix = Number(b.prix_vente_verre_grand || 0);
+    }
+    document.getElementById(prefixe + '-total-affiche').value = formaterPrix(prix * qte);
+  }
+
+  document.getElementById('form-commande').addEventListener('submit', async e => {
+    e.preventDefault();
+    const serveuse_id = document.getElementById('c-serveuse').value;
+    const boisson_id = document.getElementById('c-boisson').value;
+    const type_vente = document.getElementById('c-type-vente').value;
+    const quantite = parseFloat(document.getElementById('c-quantite').value);
+    if(!serveuse_id || !boisson_id || !quantite) return;
+    try{
+      await appel('/api/commandes', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ serveuse_id, boisson_id, type_vente, quantite }) });
+      e.target.reset();
+      majTypeVenteSelon('c');
+      await chargerTout();
+    }catch(err){ alert(err.message); }
+  });
+
+  document.getElementById('form-retour').addEventListener('submit', async e => {
+    e.preventDefault();
+    const serveuse_id = document.getElementById('r-serveuse').value;
+    const boisson_id = document.getElementById('r-boisson').value;
+    const type_vente = document.getElementById('r-type-vente').value;
+    const quantite = parseFloat(document.getElementById('r-quantite').value);
+    if(!serveuse_id || !boisson_id || !quantite) return;
+    try{
+      await appel('/api/retours', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ serveuse_id, boisson_id, type_vente, quantite }) });
+      e.target.reset();
+      majTypeVenteSelon('r');
+      await chargerTout();
+    }catch(err){ alert(err.message); }
+  });
+
+  function libelleVente(t){ return {bouteille:'Bouteille', verre_petit:'Verre (petit)', verre_grand:'Verre (grand)'}[t] || t; }
+
+  function estAujourdhui(iso){
+    const d = new Date(iso), n = new Date();
+    return d.getDate()===n.getDate() && d.getMonth()===n.getMonth() && d.getFullYear()===n.getFullYear();
+  }
+  function estCeMois(iso){
+    const d = new Date(iso), n = new Date();
+    return d.getMonth()===n.getMonth() && d.getFullYear()===n.getFullYear();
+  }
+
+  function rendreCommandes(){
+    const totalJourC = commandes.filter(c => estAujourdhui(c.cree_le)).reduce((s,c)=>s+Number(c.total),0);
+    const totalMoisC = commandes.filter(c => estCeMois(c.cree_le)).reduce((s,c)=>s+Number(c.total),0);
+    const totalJourR = retours.filter(r => estAujourdhui(r.cree_le)).reduce((s,r)=>s+Number(r.total),0);
+    const totalMoisR = retours.filter(r => estCeMois(r.cree_le)).reduce((s,r)=>s+Number(r.total),0);
+
+    document.getElementById('total-jour-commandes').textContent = formaterPrix(totalJourC);
+    document.getElementById('total-jour-retours').textContent = formaterPrix(totalJourR);
+    document.getElementById('total-jour-net').textContent = formaterPrix(totalJourC - totalJourR);
+    document.getElementById('total-mois-commandes').textContent = formaterPrix(totalMoisC);
+    document.getElementById('total-mois-retours').textContent = formaterPrix(totalMoisR);
+    document.getElementById('total-mois-net').textContent = formaterPrix(totalMoisC - totalMoisR);
+
+    construireBarreDate('filtre-date-commandes', 'commandes', rendreCommandes);
+
+    const corps = document.getElementById('liste-commandes');
+    const vide = document.getElementById('vide-commandes');
+    const liste = commandes.filter(c => correspondDate(c.cree_le, 'commandes'));
+    corps.innerHTML = '';
+    vide.style.display = liste.length === 0 ? 'block' : 'none';
+    liste.slice(0, 200).forEach(c => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${escapeHtml(c.serveuse_prenom)} ${escapeHtml(c.serveuse_nom)}</td>
+        <td class="nom">${escapeHtml(c.boisson_nom)}</td>
+        <td>${libelleVente(c.type_vente)}</td>
+        <td class="qte">${Number(c.quantite)}</td>
+        <td class="qte">${formaterPrix(c.prix_unitaire)}</td>
+        <td class="qte">${formaterPrix(c.total)}</td>
+        <td class="maj">${formaterDate(c.cree_le)}</td>
+        <td class="actions">
+          <button type="button" class="discret" onclick="imprimerCommande(${c.id})">🖨</button>
+          <button type="button" class="danger" onclick="supprimerCommande(${c.id})">Annuler</button>
+        </td>
+      `;
+      corps.appendChild(tr);
+    });
+  }
+  async function supprimerCommande(id){
+    if(!confirm('Annuler cette commande ?')) return;
+    try{ await appel('/api/commandes/' + id, { method:'DELETE' }); await chargerTout(); }catch(e){ alert(e.message); }
+  }
+
+  function rendreRetours(){
+    construireBarreDate('filtre-date-retours', 'retours', rendreRetours);
+    const corps = document.getElementById('liste-retours');
+    const vide = document.getElementById('vide-retours');
+    const liste = retours.filter(r => correspondDate(r.cree_le, 'retours'));
+    corps.innerHTML = '';
+    vide.style.display = liste.length === 0 ? 'block' : 'none';
+    liste.slice(0, 200).forEach(r => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${escapeHtml(r.serveuse_prenom)} ${escapeHtml(r.serveuse_nom)}</td>
+        <td class="nom">${escapeHtml(r.boisson_nom)}</td>
+        <td>${libelleVente(r.type_vente)}</td>
+        <td class="qte">${Number(r.quantite)}</td>
+        <td class="qte">${formaterPrix(r.prix_unitaire)}</td>
+        <td class="qte">${formaterPrix(r.total)}</td>
+        <td class="maj">${formaterDate(r.cree_le)}</td>
+        <td class="actions"><button type="button" class="danger" onclick="supprimerRetour(${r.id})">Annuler</button></td>
+      `;
+      corps.appendChild(tr);
+    });
+  }
+  async function supprimerRetour(id){
+    if(!confirm('Annuler ce retour ?')) return;
+    try{ await appel('/api/retours/' + id, { method:'DELETE' }); await chargerTout(); }catch(e){ alert(e.message); }
+  }
+
+  function imprimerCommande(id){
+    const c = commandes.find(x => x.id === id);
+    if(!c) return;
+    const zone = document.getElementById('zone-impression');
+    zone.innerHTML = `
+      <h1>JPA BAR — Ticket de commande</h1>
+      <p>Imprimé le ${new Date().toLocaleString('fr-FR')}</p>
+      <table>
+        <thead><tr><th>Serveuse</th><th>Boisson</th><th>Vente</th><th>Qté</th><th>Prix unit.</th><th>Total</th><th>Quand</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>${escapeHtml(c.serveuse_prenom)} ${escapeHtml(c.serveuse_nom)}</td>
+            <td>${escapeHtml(c.boisson_nom)}</td>
+            <td>${libelleVente(c.type_vente)}</td>
+            <td>${Number(c.quantite)}</td>
+            <td>${formaterPrix(c.prix_unitaire)}</td>
+            <td>${formaterPrix(c.total)}</td>
+            <td>${formaterDate(c.cree_le)}</td>
+          </tr>
+        </tbody>
+      </table>
+    `;
+    window.print();
+  }
+
+  // ===================== DEPENSES =====================
+  document.getElementById('d-recherche-boisson').addEventListener('input', () => rendreDepenses());
+  const champDate = document.getElementById('d-date');
+  champDate.value = new Date().toISOString().slice(0,10);
+
+  document.getElementById('form-depense').addEventListener('submit', async e => {
+    e.preventDefault();
+    const categorie = document.getElementById('d-categorie').value;
+    const libelle = document.getElementById('d-libelle').value.trim();
+    const montant = parseFloat(document.getElementById('d-montant').value);
+    const date_depense = document.getElementById('d-date').value || new Date().toISOString().slice(0,10);
+    if(!categorie || !montant) return;
+    try{
+      await appel('/api/depenses', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ categorie, libelle, montant, date_depense, employe: monNom() }) });
+      e.target.reset();
+      champDate.value = new Date().toISOString().slice(0,10);
+      await chargerTout();
+    }catch(err){ alert(err.message); }
+  });
+
+  function rendreDepenses(){
+    construireBarreDate('filtre-date-depenses', 'depenses', rendreDepenses);
+    const corps = document.getElementById('liste-depenses');
+    const vide = document.getElementById('vide-depenses');
+    const recherche = document.getElementById('d-recherche-boisson').value.trim().toLowerCase();
+    const liste = depenses.filter(d =>
+      correspondDate(d.date_depense, 'depenses') &&
+      (!recherche || (d.libelle || '').toLowerCase().includes(recherche))
+    );
+    corps.innerHTML = '';
+    vide.style.display = liste.length === 0 ? 'block' : 'none';
+    let total = 0;
+    liste.forEach(d => {
+      total += Number(d.montant);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="maj">${formaterDate(d.date_depense)}</td>
+        <td><span class="badge cat">${escapeHtml(d.categorie)}</span></td>
+        <td>${escapeHtml(d.libelle || '—')}</td>
+        <td class="qte">${formaterPrix(d.montant)}</td>
+        <td class="maj">${d.modifie_par ? escapeHtml(d.modifie_par) : '—'}</td>
+        <td class="actions"><button type="button" class="danger" onclick="supprimerDepense(${d.id})">Retirer</button></td>
+      `;
+      corps.appendChild(tr);
+    });
+    document.getElementById('total-depenses-affiche').textContent = formaterPrix(total);
+  }
+  async function supprimerDepense(id){
+    if(!confirm('Retirer cette dépense ?')) return;
+    try{ await appel('/api/depenses/' + id, { method:'DELETE' }); await chargerTout(); }catch(e){ alert(e.message); }
+  }
+
+  // ===================== SOLDE =====================
+  function rendreSolde(){
+    // Par défaut, le mois et l'année en cours si rien n'est choisi
+    if(!filtres.solde.jour && !filtres.solde.mois && !filtres.solde.annee){
+      const n = new Date();
+      filtres.solde.mois = String(n.getMonth()+1);
+      filtres.solde.annee = String(n.getFullYear());
+    }
+    construireBarreDate('filtre-date-solde', 'solde', rendreSolde);
+
+    const totalCommandes = commandes.filter(c => correspondDate(c.cree_le, 'solde')).reduce((s,c)=>s+Number(c.total),0);
+    const totalRetours = retours.filter(r => correspondDate(r.cree_le, 'solde')).reduce((s,r)=>s+Number(r.total),0);
+    const totalVentes = totalCommandes - totalRetours;
+    const totalDepenses = depenses.filter(d => correspondDate(d.date_depense, 'solde')).reduce((s,d)=>s+Number(d.montant),0);
+    const solde = totalVentes - totalDepenses;
+
+    document.getElementById('solde-total-ventes').textContent = formaterPrix(totalVentes) + (totalRetours > 0 ? ' (retours déjà déduits)' : '');
+    document.getElementById('solde-total-depenses').textContent = formaterPrix(totalDepenses);
+    document.getElementById('solde-resultat').textContent = formaterPrix(solde);
+
+    const carte = document.getElementById('carte-solde');
+    const mention = document.getElementById('solde-mention');
+    carte.classList.remove('benefice','perte');
+    if(solde >= 0){
+      carte.classList.add('benefice');
+      mention.textContent = 'Bénéfice sur la période sélectionnée.';
+    } else {
+      carte.classList.add('perte');
+      mention.textContent = 'Perte sur la période sélectionnée.';
+    }
+  }
+
+  // ===================== BILANS =====================
+  function rendreBilanListe(){
+    const zone = document.getElementById('liste-bilan-serveuses');
+    zone.innerHTML = '';
+
+    // Fusionne les serveuses actives (même sans commande) avec les résumés commandes+retours (incluant les supprimées)
+    const cles = new Map();
+    serveuses.forEach(s => cles.set('id:'+s.id, { id:s.id, nom:s.nom, prenom:s.prenom, totalCommandes:0, totalRetours:0, nbCommandes:0, nbRetours:0 }));
+
+    (bilansResume.commandes || []).forEach(r => {
+      const cle = r.serveuse_id ? 'id:'+r.serveuse_id : 'nom:'+r.serveuse_nom+':'+r.serveuse_prenom;
+      const existant = cles.get(cle) || { id: r.serveuse_id, nom: r.serveuse_nom, prenom: r.serveuse_prenom, totalCommandes:0, totalRetours:0, nbCommandes:0, nbRetours:0 };
+      existant.totalCommandes = Number(r.total);
+      existant.nbCommandes = Number(r.nombre_commandes);
+      cles.set(cle, existant);
+    });
+    (bilansResume.retours || []).forEach(r => {
+      const cle = r.serveuse_id ? 'id:'+r.serveuse_id : 'nom:'+r.serveuse_nom+':'+r.serveuse_prenom;
+      const existant = cles.get(cle) || { id: r.serveuse_id, nom: r.serveuse_nom, prenom: r.serveuse_prenom, totalCommandes:0, totalRetours:0, nbCommandes:0, nbRetours:0 };
+      existant.totalRetours = Number(r.total_retours);
+      existant.nbRetours = Number(r.nombre_retours);
+      cles.set(cle, existant);
+    });
+
+    const items = Array.from(cles.values()).sort((a,b) => a.nom.localeCompare(b.nom, 'fr'));
+
+    if(items.length === 0){ zone.innerHTML = '<div class="vide">Aucune serveuse enregistrée.</div>'; return; }
+
+    items.forEach(it => {
+      const estSupprimee = it.id === null || it.id === undefined;
+      const net = it.totalCommandes - it.totalRetours;
+      const div = document.createElement('div');
+      div.className = 'bilan-ligne-serveuse' + (serveuseSelectionneeBilan && serveuseSelectionneeBilan.nom === it.nom && serveuseSelectionneeBilan.prenom === it.prenom ? ' selectionne' : '');
+      div.innerHTML = `<span>${escapeHtml(it.prenom)} ${escapeHtml(it.nom)}${estSupprimee ? ' <span class="badge bas">supprimée</span>' : ''} — ${it.nbCommandes} commande(s), ${it.nbRetours} retour(s)</span><strong>${formaterPrix(net)}</strong>`;
+      div.addEventListener('click', () => { serveuseSelectionneeBilan = it; afficherDetailBilan(it); });
+      zone.appendChild(div);
+    });
+  }
+
+  function afficherDetailBilan(it){
+    rendreBilanListe();
+    document.getElementById('detail-bilan').style.display = 'block';
+    construireBarreDate('filtre-date-bilan', 'bilan', () => afficherDetailBilan(it));
+
+    const cmds = commandes.filter(c => c.serveuse_nom === it.nom && c.serveuse_prenom === it.prenom && correspondDate(c.cree_le, 'bilan'));
+    const rets = retours.filter(r => r.serveuse_nom === it.nom && r.serveuse_prenom === it.prenom && correspondDate(r.cree_le, 'bilan'));
+    const totalCmds = cmds.reduce((sum,c) => sum + Number(c.total), 0);
+    const totalRets = rets.reduce((sum,r) => sum + Number(r.total), 0);
+
+    document.getElementById('bilan-total-commandes').textContent = formaterPrix(totalCmds);
+    document.getElementById('bilan-total-retours').textContent = formaterPrix(totalRets);
+    document.getElementById('bilan-total-net').textContent = formaterPrix(totalCmds - totalRets);
+
+    const corpsC = document.getElementById('liste-bilan-commandes');
+    corpsC.innerHTML = '';
+    cmds.forEach(c => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="nom">${escapeHtml(c.boisson_nom)}</td>
+        <td>${libelleVente(c.type_vente)}</td>
+        <td class="qte">${Number(c.quantite)}</td>
+        <td class="qte">${formaterPrix(c.prix_unitaire)}</td>
+        <td class="qte">${formaterPrix(c.total)}</td>
+        <td class="maj">${formaterDate(c.cree_le)}</td>
+        <td class="actions"><button type="button" class="discret" onclick="imprimerCommande(${c.id})">🖨 Imprimer</button></td>
+      `;
+      corpsC.appendChild(tr);
+    });
+
+    const corpsR = document.getElementById('liste-bilan-retours');
+    corpsR.innerHTML = '';
+    rets.forEach(r => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="nom">${escapeHtml(r.boisson_nom)}</td>
+        <td>${libelleVente(r.type_vente)}</td>
+        <td class="qte">${Number(r.quantite)}</td>
+        <td class="qte">${formaterPrix(r.prix_unitaire)}</td>
+        <td class="qte">${formaterPrix(r.total)}</td>
+        <td class="maj">${formaterDate(r.cree_le)}</td>
+      `;
+      corpsR.appendChild(tr);
+    });
+  }
+
+  // ===================== UTILISATEURS (admin) =====================
+  document.getElementById('u-role').addEventListener('change', majChampSelectionServeuse);
+  function majChampSelectionServeuse(){
+    document.getElementById('champ-u-serveuse').style.display = document.getElementById('u-role').value === 'serveuse' ? 'flex' : 'none';
+  }
+  majChampSelectionServeuse();
+
+  function rendreSelectServeuseCompte(){
+    const sel = document.getElementById('u-serveuse');
+    const val = sel.value;
+    sel.innerHTML = '<option value="">— aucune —</option>' + serveuses.map(s => `<option value="${s.id}">${escapeHtml(s.prenom)} ${escapeHtml(s.nom)}</option>`).join('');
+    sel.value = val;
+  }
+
+  document.getElementById('form-utilisateur').addEventListener('submit', async e => {
+    e.preventDefault();
+    const nom_utilisateur = document.getElementById('u-identifiant').value.trim();
+    const mot_de_passe = document.getElementById('u-motdepasse').value;
+    const nom = document.getElementById('u-nom').value.trim();
+    const prenom = document.getElementById('u-prenom').value.trim();
+    const role = document.getElementById('u-role').value;
+    const serveuse_id = role === 'serveuse' ? (document.getElementById('u-serveuse').value || null) : null;
+    if(!nom_utilisateur || !mot_de_passe || !nom || !prenom) return;
+    try{
+      await appel('/api/utilisateurs', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ nom_utilisateur, mot_de_passe, role, nom, prenom, serveuse_id }) });
+      e.target.reset();
+      majChampSelectionServeuse();
+      await chargerTout();
+    }catch(err){ alert(err.message); }
+  });
+
+  function rendreUtilisateurs(){
+    rendreSelectServeuseCompte();
+    const corps = document.getElementById('liste-utilisateurs');
+    const vide = document.getElementById('vide-utilisateurs');
+    corps.innerHTML = '';
+    vide.style.display = comptesUtilisateurs.length === 0 ? 'block' : 'none';
+    comptesUtilisateurs.forEach(u => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="nom">${escapeHtml(u.nom_utilisateur)}</td>
+        <td>${escapeHtml(u.prenom)} ${escapeHtml(u.nom)}</td>
+        <td><span class="badge cat">${nomRoleLisible(u.role)}</span></td>
+        <td>${u.actif ? '<span class="badge ok">Actif</span>' : '<span class="badge bas">Désactivé</span>'}</td>
+        <td class="actions">
+          <button type="button" class="discret" onclick="basculerActifCompte(${u.id}, ${!u.actif})">${u.actif ? 'Désactiver' : 'Réactiver'}</button>
+          <button type="button" class="danger" onclick="supprimerCompte(${u.id})">Supprimer</button>
+        </td>
+      `;
+      corps.appendChild(tr);
+    });
+  }
+
+  async function basculerActifCompte(id, nouveauStatut){
+    try{ await appel('/api/utilisateurs/' + id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ actif: nouveauStatut }) }); await chargerTout(); }
+    catch(e){ alert(e.message); }
+  }
+  async function supprimerCompte(id){
+    if(!confirm("Supprimer définitivement ce compte ? La personne n'aura plus aucun accès au site.")) return;
+    try{ await appel('/api/utilisateurs/' + id, { method:'DELETE' }); await chargerTout(); }
+    catch(e){ alert(e.message); }
+  }
+
+  verifierSessionExistante();
+  setInterval(() => { if(utilisateurActuel) chargerTout(); }, 15000);
+</script>
+</body>
+</html>
