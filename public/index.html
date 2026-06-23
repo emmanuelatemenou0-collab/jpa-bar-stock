@@ -918,8 +918,8 @@
           <div class="stepper">
             <span>${Number(b.stock_bouteilles)}</span>
             <input type="number" min="0" step="1" placeholder="qté" id="qte-saisie-${b.id}" style="width:64px; padding:6px;">
-            <button type="button" onclick="ajusterStockSaisi(${b.id}, ${b.stock_bouteilles}, 1)">+ Ajouter</button>
-            <button type="button" onclick="ajusterStockSaisi(${b.id}, ${b.stock_bouteilles}, -1)">− Diminuer</button>
+            <button type="button" style="width:auto; padding:6px 10px; font-size:0.7rem;" onclick="ajusterStockSaisi(${b.id}, ${b.stock_bouteilles}, 1)">+ Ajouter</button>
+            <button type="button" style="width:auto; padding:6px 10px; font-size:0.7rem;" onclick="ajusterStockSaisi(${b.id}, ${b.stock_bouteilles}, -1)">− Diminuer</button>
           </div>
         </td>
         <td class="qte">${formaterPrix(b.prix_vente_bouteille)}${b.categorie==='whisky' ? ' / verre: '+formaterPrix(b.prix_vente_verre_petit)+'-'+formaterPrix(b.prix_vente_verre_grand) : ''}</td>
